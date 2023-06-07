@@ -7,14 +7,13 @@ using namespace std;
 #include <fstream>
 #include <cmath>
 
-const int n = 20;
+const int n = 100;
 float lambda = 2;
 vector<vector<int>> grid;
 
 bool details = false;
 
-vector<int> getNeighbors(int v) {
-    vector<int> neighbors;
+void getNeighbors(int v, int& n1, int& n2, int& n3, int& n4) {
     int x = v % n;
     int y = floor(v / n);
 
@@ -35,29 +34,27 @@ vector<int> getNeighbors(int v) {
     if (down == n)
         down = 0;
 
-    neighbors.push_back(left + y * n);
-    neighbors.push_back(right + y * n);
-    neighbors.push_back(x + up * n);
-    neighbors.push_back(x + down * n);
-
-    return neighbors;
+    n1 = left + y * n;
+    n2 = right + y * n;
+    n3 = x + up * n;
+    n4 = x + down * n;
 }
 
 void tick(bool vertices [n * n], bool verts2[n*n], int& difference) {
-    if (details) {
-        cout << "Vertcies are: " << endl;
+    //if (details) {
+        /*cout << "Vertcies are: " << endl;
         for (int y = 0; y < n; y++) {
             for (int x = 0; x < n; x++) {
                 cout << vertices[y*n+x] << ", ";
             }
             cout << endl;
         }
-            
         cout << endl;
-    }
+          */  
+    //}
 
     int v = rand() % (n * n);
-    if (details) cout << "Random vertex: " << v << endl;
+   // if (details) cout << "Random vertex: " << v << endl;
 
     if (vertices[v]) { // Vertex is in set, remove w.p. 1/(1+lambda)
         if ((double)rand() / RAND_MAX <= (double)((1 / (1 + lambda)))) {
@@ -73,13 +70,10 @@ void tick(bool vertices [n * n], bool verts2[n*n], int& difference) {
         if ((double)rand() / RAND_MAX <= (double)(lambda / (1 + lambda))) { // Add vertex w.p. lambda/(lambda+1)
 
             //Verify new set is independent
-            vector<int> neighbors = getNeighbors(v);
-            for (int nei : neighbors) {
-                if (vertices[nei]) { //Connected vertex is already in graph, not valid IS
-                   // if (details) cout << "New graph connected, reverting!" << endl;
-                    return;
-                }
-            }
+            int n1, n2, n3, n4;
+            getNeighbors(v, n1, n2, n3, n4);
+            if (vertices[n1] || vertices[n2] || vertices[n3] || vertices[n4])
+                return;
 
             vertices[v] = true;
             if (verts2[v]) difference--;
@@ -119,13 +113,10 @@ int main()
     vector<int> avgs;
 
     float increment = 0.25f;
-    ofstream myfile;
-    myfile.open("output.csv");
-    myfile << "This is the first cell in the first column.\n";
-    myfile << "lambda;tmix\n";
+    
 
     for (int i = 0; i < 16; i++) {
-        lambda = 1.25f + increment * i;
+        lambda = 0.5f + increment * i;
         cout << "Lambda: " << lambda << endl;
         int tickSum = 0;
         int trials = 80;
@@ -143,22 +134,21 @@ int main()
 
             int ticks = 0;
             while (chainDifference > 0) {
+               // if (details) cout << "C1" << endl;
+                tick(chain1, chain2, chainDifference);
+                //if (details) cout << "C2" << endl;
+                tick(chain2, chain1, chainDifference);
+                ticks++;
+                lowestD = min(chainDifference, lowestD);
+                
                 if (ticks % 1000000 == 0) {
                     system("cls");
                     cout << "Tick: " << ticks << endl;
                     details = true;
+                    cout << "Difference: " << chainDifference << endl;
+                    cout << "Lowest Diff: " << lowestD << endl;
+                    
                 }
-                else
-                    details = false;
-
-                if (details) cout << "C1" << endl;
-                tick(chain1, chain2, chainDifference);
-                if (details) cout << "C2" << endl;
-                tick(chain2, chain1, chainDifference);
-                if (details) cout << "Difference: " << chainDifference << endl;
-                if (details) cout << "Lowest Diff: " << lowestD << endl;
-                ticks++;
-                if (chainDifference < lowestD) lowestD = chainDifference;
                 
             }
         
@@ -168,7 +158,7 @@ int main()
         }
         avgs.push_back(tickSum / trials);
         cout << "Average for lambda " << lambda << ": " << tickSum / trials;
-        myfile << 0.25f + increment * i << ";" << avgs[i] << ";\n";
+        
     }
 
     cout << "-----" << endl;
@@ -176,7 +166,13 @@ int main()
     for (int i = 0; i < avgs.size(); i++) {
         cout << "lambda: " << 0.25f + increment*i <<" - " << avgs[i] << endl;
     }
- 
+
+    ofstream myfile;
+    myfile.open("output.csv");
+    myfile << "This is the first cell in the first column.\n";
+    myfile << "lambda;tmix\n";
+    //myfile << 0.25f + increment * i << ";" << avgs[i] << ";\n";
+    
     myfile.close();
 
     return 0;
