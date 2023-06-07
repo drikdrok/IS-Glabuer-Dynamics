@@ -7,7 +7,7 @@ using namespace std;
 #include <fstream>
 #include <cmath>
 
-const int n = 8;
+const int n = 20;
 float lambda = 2;
 vector<vector<int>> grid;
 
@@ -66,7 +66,7 @@ void tick(bool vertices [n * n], bool verts2[n*n], int& difference) {
             if (!verts2[v]) difference--;
             else difference++;
             
-            if (details) cout << "Vertex was in set, has been removed" << endl;
+            //if (details) cout << "Vertex was in set, has been removed" << endl;
         }
     }
     else {
@@ -76,7 +76,7 @@ void tick(bool vertices [n * n], bool verts2[n*n], int& difference) {
             vector<int> neighbors = getNeighbors(v);
             for (int nei : neighbors) {
                 if (vertices[nei]) { //Connected vertex is already in graph, not valid IS
-                    if (details) cout << "New graph connected, reverting!" << endl;
+                   // if (details) cout << "New graph connected, reverting!" << endl;
                     return;
                 }
             }
@@ -84,7 +84,7 @@ void tick(bool vertices [n * n], bool verts2[n*n], int& difference) {
             vertices[v] = true;
             if (verts2[v]) difference--;
             else difference++;
-            if (details) cout << "Vertex added to set" << endl;
+            //if (details) cout << "Vertex added to set" << endl;
         }
     }
 
@@ -125,12 +125,13 @@ int main()
     myfile << "lambda;tmix\n";
 
     for (int i = 0; i < 16; i++) {
-        lambda = 0.25f + increment * i;
+        lambda = 1.25f + increment * i;
         cout << "Lambda: " << lambda << endl;
         int tickSum = 0;
-        int trials = 100;
+        int trials = 80;
         for (int j = 0; j < trials; j++) {
-            
+
+            int lowestD = n*n;
             int chainDifference = n * n;
 
             bool chain1[n * n];
@@ -142,15 +143,27 @@ int main()
 
             int ticks = 0;
             while (chainDifference > 0) {
+                if (ticks % 1000000 == 0) {
+                    system("cls");
+                    cout << "Tick: " << ticks << endl;
+                    details = true;
+                }
+                else
+                    details = false;
+
                 if (details) cout << "C1" << endl;
                 tick(chain1, chain2, chainDifference);
                 if (details) cout << "C2" << endl;
                 tick(chain2, chain1, chainDifference);
                 if (details) cout << "Difference: " << chainDifference << endl;
+                if (details) cout << "Lowest Diff: " << lowestD << endl;
                 ticks++;
+                if (chainDifference < lowestD) lowestD = chainDifference;
+                
             }
         
             cout << "Mixing time: " << ticks << endl;
+            return 0;
             tickSum += ticks;
         }
         avgs.push_back(tickSum / trials);
