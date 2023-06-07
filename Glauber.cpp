@@ -9,7 +9,6 @@ using namespace std;
 
 const int n = 100;
 float lambda = 2;
-vector<vector<int>> grid;
 
 bool details = false;
 
