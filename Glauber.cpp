@@ -8,9 +8,24 @@ using namespace std;
 #include <cmath>
 
 const int n = 100;
+const int nSquared = n * n;
 float lambda = 2;
 
+double chanceToRemove = (double)((1 / (1 + lambda)));
+double chanceToAdd = (double)(lambda / (1 + lambda));
+
 bool details = false;
+
+void printChain(bool vertices[n * n]) {
+    int size = 10;
+    if (n < size) size = n;
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            cout << vertices[i * n + j] << ", ";
+        }
+        cout << endl;
+    }
+}
 
 void getNeighbors(int v, int& n1, int& n2, int& n3, int& n4) {
     int x = v % n;
@@ -39,34 +54,26 @@ void getNeighbors(int v, int& n1, int& n2, int& n3, int& n4) {
     n4 = x + down * n;
 }
 
-void tick(bool vertices [n * n], bool verts2[n*n], int& difference) {
-    //if (details) {
-        /*cout << "Vertcies are: " << endl;
-        for (int y = 0; y < n; y++) {
-            for (int x = 0; x < n; x++) {
-                cout << vertices[y*n+x] << ", ";
-            }
-            cout << endl;
-        }
-        cout << endl;
-          */  
-    //}
+void tick(bool vertices [nSquared], bool verts2[nSquared], int& difference, int v, double chance, int& actionPerformed) {
+    if (details) {
+        cout << "Vertcies are: " << endl;
+        printChain(vertices);
+    }
 
-    int v = rand() % (n * n);
-   // if (details) cout << "Random vertex: " << v << endl;
 
     if (vertices[v]) { // Vertex is in set, remove w.p. 1/(1+lambda)
-        if ((double)rand() / RAND_MAX <= (double)((1 / (1 + lambda)))) {
+        if (chance <= chanceToRemove && actionPerformed != 1) {
             vertices[v] = false;
+            actionPerformed = 2;
             
             if (!verts2[v]) difference--;
             else difference++;
             
-            //if (details) cout << "Vertex was in set, has been removed" << endl;
+            if (details) cout << "Vertex was in set, has been removed" << endl;
         }
     }
     else {
-        if ((double)rand() / RAND_MAX <= (double)(lambda / (1 + lambda))) { // Add vertex w.p. lambda/(lambda+1)
+        if (chance <= chanceToAdd && actionPerformed != 2) { // Add vertex w.p. lambda/(lambda+1)
 
             //Verify new set is independent
             int n1, n2, n3, n4;
@@ -75,30 +82,28 @@ void tick(bool vertices [n * n], bool verts2[n*n], int& difference) {
                 return;
 
             vertices[v] = true;
+            actionPerformed = 1;
             if (verts2[v]) difference--;
             else difference++;
-            //if (details) cout << "Vertex added to set" << endl;
+            if (details) cout << "Vertex added to set" << endl;
         }
     }
 
 }
 
 void initChain(int parity, bool vertices[n * n]) {
-
     for (int i = 0; i < n; i++) { // Add all L or R vertices to set
         for (int j = 0; j < n; j++) {
-            if (i % 2 == 0 && j % 2 == parity) {
+            if (i % 2 == 0 && j % 2 == parity) 
                 vertices[i * n + j] = true;
-            }
-            else if (i % 2 == 1 && j % 2 != parity) {
+            else if (i % 2 == 1 && j % 2 != parity) 
                 vertices[i * n + j] = true;
-            }
         }
     }
 }
 
-bool areEqual(bool c1[n * n], bool c2 [n * n]) {
-    for (int i = 0; i < n*n; i++)
+bool areEqual(bool c1[nSquared], bool c2 [nSquared]) {
+    for (int i = 0; i < nSquared; i++)
         if (c1[i] != c2[i])
             return false;
     return true;
@@ -111,18 +116,21 @@ int main()
     
     vector<int> avgs;
 
-    float increment = 0.25f;
-    
-
-    for (int i = 0; i < 16; i++) {
-        lambda = 0.5f + increment * i;
+    float increment = 0.1f;
+   
+    for (int i = 0; i < 38; i++) {
+        lambda = 0.20f + increment * i;
         cout << "Lambda: " << lambda << endl;
         int tickSum = 0;
-        int trials = 80;
+        int trials = 1;
+        chanceToRemove = (double)((1 / (1 + lambda)));
+        chanceToAdd = (double)(lambda / (1 + lambda));
+
         for (int j = 0; j < trials; j++) {
 
             int lowestD = n*n;
             int chainDifference = n * n;
+
 
             bool chain1[n * n];
             memset(chain1, 0, sizeof(chain1));
@@ -131,49 +139,80 @@ int main()
             memset(chain2, 0, sizeof(chain2));
             initChain(1, chain2);
 
-            int ticks = 0;
-            while (chainDifference > 0) {
-               // if (details) cout << "C1" << endl;
-                tick(chain1, chain2, chainDifference);
-                //if (details) cout << "C2" << endl;
-                tick(chain2, chain1, chainDifference);
+            long long ticks = 0;
+            while (lowestD > 0) {
+
+                int randomVertex = rand() % (nSquared);
+                double chance = (double)rand() / RAND_MAX;
+                if (details) cout << "Random vertex: " << randomVertex << endl;
+
+                if (details) cout << "C1" << endl;
+                int actionPerformed = 0;
+                tick(chain1, chain2, chainDifference, randomVertex, chance, actionPerformed);
+                if (details) cout << "C2" << endl;
+
+                tick(chain2, chain1, chainDifference, randomVertex, chance, actionPerformed);
                 ticks++;
                 lowestD = min(chainDifference, lowestD);
-                
-                if (ticks % 1000000 == 0) {
+               
+              /*
+                cout << "Difference: " << chainDifference << endl;
+                cout << "Lowest Diff: " << lowestD << endl;
+                cout << "----------------------------------" << endl;
+               */ 
+
+                if (ticks % 10000000 == 0) {
                     system("cls");
+                    cout << "Lambda: " << lambda << endl;
                     cout << "Tick: " << ticks << endl;
-                    details = true;
                     cout << "Difference: " << chainDifference << endl;
                     cout << "Lowest Diff: " << lowestD << endl;
-                    
+                    cout << "Chain 1: " << endl;
+                    printChain(chain1);
+                    cout << "Chain 2: " << endl;
+                    printChain(chain2);
                 }
                 
             }
         
             cout << "Mixing time: " << ticks << endl;
-            return 0;
+            ofstream myFile;
+            myFile.open("output.csv", ios::app);
+            myFile << 0.2f + increment * i << ";" << ticks << "\n";
+            myFile.close();
+
             tickSum += ticks;
         }
         avgs.push_back(tickSum / trials);
-        cout << "Average for lambda " << lambda << ": " << tickSum / trials;
+        cout << "Average for lambda " << lambda << ": " << tickSum / trials << endl;
         
     }
 
     cout << "-----" << endl;
     cout << "Averages: " << endl;
     for (int i = 0; i < avgs.size(); i++) {
-        cout << "lambda: " << 0.25f + increment*i <<" - " << avgs[i] << endl;
+        cout << "lambda: " << 0.6f + increment*i <<" - " << avgs[i] << endl;
     }
 
-    ofstream myfile;
-    myfile.open("output.csv");
-    myfile << "This is the first cell in the first column.\n";
-    myfile << "lambda;tmix\n";
-    //myfile << 0.25f + increment * i << ";" << avgs[i] << ";\n";
-    
-    myfile.close();
+   
 
     return 0;
 }
 
+
+
+
+
+
+
+
+
+
+/*while (true) {
+     int k;
+     cin >> k;
+     int n1, n2, n3, n4;
+     getNeighbors(k, n1, n2, n3, n4);
+     cout << n1 << ", " << n2 << ", " << n3 << ", " << n4 << endl;
+ }
+ */
