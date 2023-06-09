@@ -9,10 +9,9 @@ using namespace std;
 
 const int n = 100;
 const int nSquared = n * n;
-float lambda = 2;
+float lambda;
 
-double chanceToRemove = (double)((1 / (1 + lambda)));
-double chanceToAdd = (double)(lambda / (1 + lambda));
+double chanceToAdd; // = (double)(lambda / (1 + lambda));
 
 bool details = false;
 
@@ -22,6 +21,17 @@ void printChain(bool vertices[n * n]) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             cout << vertices[i * n + j] << ", ";
+        }
+        cout << endl;
+    }
+}
+
+void printChains(bool chain1[n * n], bool chain2[n * n] ) {
+    int size = 10;
+    if (n < size) size = n;
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            cout << "(" << chain1[i * n + j] << ", " << chain2[i * n + j] << ")";
         }
         cout << endl;
     }
@@ -54,41 +64,26 @@ void getNeighbors(int v, int& n1, int& n2, int& n3, int& n4) {
     n4 = x + down * n;
 }
 
-void tick(bool vertices [nSquared], bool verts2[nSquared], int& difference, int v, double chance, int& actionPerformed) {
-    if (details) {
-        cout << "Vertcies are: " << endl;
-        printChain(vertices);
+void addVertex(int v, bool chain[nSquared], bool otherChain[nSquared], int& difference) {
+    if (!chain[v]) {
+        
+        int n1, n2, n3, n4;
+        getNeighbors(v, n1, n2, n3, n4);
+        if (chain[n1] || chain[n2] || chain[n3] || chain[n4])
+            return;
+
+        chain[v] = true;
+        if (otherChain[v]) difference--;
+        else difference++;
     }
+}
 
-
-    if (vertices[v]) { // Vertex is in set, remove w.p. 1/(1+lambda)
-        if (chance <= chanceToRemove && actionPerformed != 1) {
-            vertices[v] = false;
-            actionPerformed = 2;
-            
-            if (!verts2[v]) difference--;
-            else difference++;
-            
-            if (details) cout << "Vertex was in set, has been removed" << endl;
-        }
+void removeVertex(int v, bool chain[nSquared], bool otherChain[nSquared], int& difference) {
+    if (chain[v]) {
+        chain[v] = false;
+        if (!otherChain[v]) difference--;
+        else difference++;
     }
-    else {
-        if (chance <= chanceToAdd && actionPerformed != 2) { // Add vertex w.p. lambda/(lambda+1)
-
-            //Verify new set is independent
-            int n1, n2, n3, n4;
-            getNeighbors(v, n1, n2, n3, n4);
-            if (vertices[n1] || vertices[n2] || vertices[n3] || vertices[n4])
-                return;
-
-            vertices[v] = true;
-            actionPerformed = 1;
-            if (verts2[v]) difference--;
-            else difference++;
-            if (details) cout << "Vertex added to set" << endl;
-        }
-    }
-
 }
 
 void initChain(int parity, bool vertices[n * n]) {
@@ -102,12 +97,6 @@ void initChain(int parity, bool vertices[n * n]) {
     }
 }
 
-bool areEqual(bool c1[nSquared], bool c2 [nSquared]) {
-    for (int i = 0; i < nSquared; i++)
-        if (c1[i] != c2[i])
-            return false;
-    return true;
-}
 
 
 int main()
@@ -116,14 +105,13 @@ int main()
     
     vector<int> avgs;
 
-    float increment = 0.1f;
+    float increment = 0.005f;
    
     for (int i = 0; i < 38; i++) {
-        lambda = 0.20f + increment * i;
+        lambda = 3.70f + increment * i;
         cout << "Lambda: " << lambda << endl;
         int tickSum = 0;
         int trials = 1;
-        chanceToRemove = (double)((1 / (1 + lambda)));
         chanceToAdd = (double)(lambda / (1 + lambda));
 
         for (int j = 0; j < trials; j++) {
@@ -143,15 +131,33 @@ int main()
             while (lowestD > 0) {
 
                 int randomVertex = rand() % (nSquared);
-                double chance = (double)rand() / RAND_MAX;
-                if (details) cout << "Random vertex: " << randomVertex << endl;
+                double pr = (double)rand() / RAND_MAX;
+                int action = 0;
+                if (pr <= chanceToAdd) {
+                    addVertex(randomVertex, chain1, chain2, chainDifference);
+                    lowestD = min(chainDifference, lowestD);
+                    addVertex(randomVertex, chain2, chain1, chainDifference);
+                    action = 1;
+                }
+                else {
+                    removeVertex(randomVertex, chain1, chain2, chainDifference);
+                    lowestD = min(chainDifference, lowestD);
+                    removeVertex(randomVertex, chain2, chain1, chainDifference);
+                    action = 2;
+                }
 
-                if (details) cout << "C1" << endl;
-                int actionPerformed = 0;
-                tick(chain1, chain2, chainDifference, randomVertex, chance, actionPerformed);
-                if (details) cout << "C2" << endl;
+                if (details) {
+                    cout << "Tick: " << ticks << endl;
+                    cout << "Current Difference: " << chainDifference << endl;
+                    cout << "Min Difference: " << lowestD << endl;
+                    cout << "Random vertex: " << randomVertex << endl;
+                    if (action == 1) cout << "Added Vertex" << endl;
+                    if (action == 2) cout << "Removed Vertex" << endl;
+                    printChains(chain1, chain2);
+                    cout << "--------------------------------------------------" << endl;
+                }
 
-                tick(chain2, chain1, chainDifference, randomVertex, chance, actionPerformed);
+
                 ticks++;
                 lowestD = min(chainDifference, lowestD);
                
@@ -167,10 +173,7 @@ int main()
                     cout << "Tick: " << ticks << endl;
                     cout << "Difference: " << chainDifference << endl;
                     cout << "Lowest Diff: " << lowestD << endl;
-                    cout << "Chain 1: " << endl;
-                    printChain(chain1);
-                    cout << "Chain 2: " << endl;
-                    printChain(chain2);
+                    printChains(chain1, chain2);
                 }
                 
             }
@@ -204,7 +207,24 @@ int main()
 
 
 
+//Unused helper function
+/*
+int findDifference(bool chain1[n * n], bool chain2[n * n]) {
+    int d = 0;
+    for (int i = 0; i < n * n; i++) {
+        if (chain1[i] != chain2[i]) d++;
+    }
+    return d;
+}
 
+bool areEqual(bool c1[nSquared], bool c2 [nSquared]) {
+    for (int i = 0; i < nSquared; i++)
+        if (c1[i] != c2[i])
+            return false;
+    return true;
+}
+
+*/
 
 
 
@@ -216,3 +236,5 @@ int main()
      cout << n1 << ", " << n2 << ", " << n3 << ", " << n4 << endl;
  }
  */
+
+
