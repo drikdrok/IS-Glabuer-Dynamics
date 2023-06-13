@@ -66,7 +66,6 @@ void getNeighbors(int v, int& n1, int& n2, int& n3, int& n4) {
 
 void addVertex(int v, bool chain[nSquared], bool otherChain[nSquared], int& difference) {
     if (!chain[v]) {
-        
         int n1, n2, n3, n4;
         getNeighbors(v, n1, n2, n3, n4);
         if (chain[n1] || chain[n2] || chain[n3] || chain[n4])
@@ -111,14 +110,10 @@ int main()
         lambda = 3.70f + increment * i;
         cout << "Lambda: " << lambda << endl;
         int tickSum = 0;
-        int trials = 1;
+        int trials = 20;
         chanceToAdd = (double)(lambda / (1 + lambda));
 
         for (int j = 0; j < trials; j++) {
-
-            int lowestD = n*n;
-            int chainDifference = n * n;
-
 
             bool chain1[n * n];
             memset(chain1, 0, sizeof(chain1));
@@ -128,38 +123,35 @@ int main()
             initChain(1, chain2);
 
             long long ticks = 0;
+            int lowestD = n * n;
+            int chainDifference = n * n;
             while (lowestD > 0) {
-
                 int randomVertex = rand() % (nSquared);
                 double pr = (double)rand() / RAND_MAX;
-                int action = 0;
                 if (pr <= chanceToAdd) {
                     addVertex(randomVertex, chain1, chain2, chainDifference);
-                    lowestD = min(chainDifference, lowestD);
                     addVertex(randomVertex, chain2, chain1, chainDifference);
-                    action = 1;
                 }
                 else {
                     removeVertex(randomVertex, chain1, chain2, chainDifference);
-                    lowestD = min(chainDifference, lowestD);
                     removeVertex(randomVertex, chain2, chain1, chainDifference);
-                    action = 2;
                 }
+
+                ticks++;
+                lowestD = min(chainDifference, lowestD);
 
                 if (details) {
                     cout << "Tick: " << ticks << endl;
                     cout << "Current Difference: " << chainDifference << endl;
                     cout << "Min Difference: " << lowestD << endl;
                     cout << "Random vertex: " << randomVertex << endl;
-                    if (action == 1) cout << "Added Vertex" << endl;
-                    if (action == 2) cout << "Removed Vertex" << endl;
+                   // if (action == 1) cout << "Added Vertex" << endl;
+                   // if (action == 2) cout << "Removed Vertex" << endl;
                     printChains(chain1, chain2);
                     cout << "--------------------------------------------------" << endl;
                 }
 
 
-                ticks++;
-                lowestD = min(chainDifference, lowestD);
                
               /*
                 cout << "Difference: " << chainDifference << endl;
@@ -179,15 +171,16 @@ int main()
             }
         
             cout << "Mixing time: " << ticks << endl;
-            ofstream myFile;
-            myFile.open("output.csv", ios::app);
-            myFile << 0.2f + increment * i << ";" << ticks << "\n";
-            myFile.close();
+            
 
             tickSum += ticks;
         }
         avgs.push_back(tickSum / trials);
         cout << "Average for lambda " << lambda << ": " << tickSum / trials << endl;
+        ofstream myFile;
+        myFile.open("output.csv", ios::app);
+        myFile << 3.7f + increment * i << ";" << tickSum / trials << "\n";
+        myFile.close();
         
     }
 
